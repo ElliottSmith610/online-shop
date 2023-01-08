@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <table class="table">
+    <thead>
+      <tr>
+      {% for column in users[0] %}
+          <th scope="col">{{ column.title() }}</th>
+      {% endfor %}
+      </tr>
+    </thead>
+    {% for user in users %}
+    <tr>
+      {% for (key, value) in user.items() %}
+        {% if key == "admin" %}
+            {% if value == "True" %}
+              <td>✔</td>
+            {% else %}
+              <td>✖</td>
+            {% endif %}
+        {% else %}
+        <td>{{ value }}</td>
+        {% endif %}
+      {% endfor %}
+
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

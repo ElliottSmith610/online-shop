@@ -27,10 +27,15 @@ def load_user(user_id):
 def admin_only(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if current_user.admin:
-            return func(*args, **kwargs)
+        try:
+            admin = current_user.admin
+        except AttributeError:
+            return redirect(url_for("home"))
         else:
-            return abort(403)
+            if admin:
+                return func(*args, **kwargs)
+            else:
+                return redirect(url_for("home"))
     return wrapper
 
 
@@ -44,6 +49,10 @@ class Users(UserMixin, db.Model):
     admin = db.Column(db.Boolean, nullable=True)
     ## Any relationships ##
     # link to a cart db? #
+
+    def is_admin(self):
+        return {column.name: str(getattr(self, column.name)) for column in self.__table__.columns
+                if column.name != "password"}
 
 
 class Items(db.Model):
@@ -125,6 +134,14 @@ def cart():
 @app.route("/checkout", methods=["GET", "POST"])
 def checkout():
     pass
+
+
+@app.route("/users", methods=["GET", "POST"])
+@admin_only
+def users():
+    user_list_query = db.session.query(Users).all()
+    user_list = [user.is_admin() for user in user_list_query]
+    return render_template("users.html", users=user_list)
 
 
 if __name__ == "__main__":
