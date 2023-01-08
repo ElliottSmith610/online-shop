@@ -13,6 +13,14 @@ app.config["SECRET_KEY"] = "Banana"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///online-shop.db"
 db = SQLAlchemy(app)
 
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return Users.query.get(user_id)
+
 
 class Users(UserMixin, db.Model):
     __tablename__ = "users"
@@ -67,10 +75,17 @@ def login():
     if login_form.validate_on_submit():
 
         email = login_form.email.data
-        if Users.query.filter_by(email=email).first():
-            print("Yay")
+        user = Users.query.filter_by(email=email).first()
+        if not user:
+            # Email not found, either incorrect or doesn't exist
+            print("Wrong Email")
+        elif not check_password_hash(user.password, login_form.password.data):
+            # incorrect password
+            print("Wrong Pass")
         else:
-            print("Nay")
+            print("wewlad")
+            login_user(user)
+            return redirect(url_for("home"))
 
     return render_template("login.html", form=login_form)
 
