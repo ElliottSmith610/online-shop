@@ -1,3 +1,5 @@
+from functools import wraps
+
 from flask import *
 from flask_bootstrap import Bootstrap
 from flask_sqlalchemy import SQLAlchemy
@@ -22,6 +24,16 @@ def load_user(user_id):
     return Users.query.get(user_id)
 
 
+def admin_only(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user.admin:
+            return func(*args, **kwargs)
+        else:
+            return abort(403)
+    return wrapper
+
+
 class Users(UserMixin, db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
@@ -29,6 +41,7 @@ class Users(UserMixin, db.Model):
     l_name = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(250), nullable=False, unique=True)
     password = db.Column(db.String(250), nullable=False)
+    admin = db.Column(db.Boolean, nullable=True)
     ## Any relationships ##
     # link to a cart db? #
 
@@ -62,6 +75,13 @@ def register():
             salt_length=8,
             )
         new_user.password = new_password
+
+        if not Users.query.filter_by(admin=True).first():
+            # Sets first user as default admin
+            new_user.admin = True
+        else:
+            new_user.admin = False
+
         db.session.add(new_user)
         db.session.commit()
         login_user(new_user)
