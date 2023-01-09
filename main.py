@@ -74,10 +74,6 @@ with app.app_context():
 
 @app.route("/")
 def home():
-    try:
-        print(session["cart"])
-    except KeyError:
-        pass
     items_query = db.session.query(Items).all()
     items = [item.to_dict() for item in items_query]
 
@@ -155,9 +151,21 @@ def to_cart(item_name):
     return redirect(url_for("home"))
 
 
+@app.route("/from_cart/<item_name>", methods=["GET", "POST"])
+def from_cart(item_name):
+    session["cart"].pop(item_name)
+    session.modified = True
+    return redirect(url_for("cart"))
+
+
 @app.route("/cart", methods=["GET", "POST"])
 def cart():
-    pass
+    try:
+        _cart = session["cart"]
+    except KeyError:
+        _cart = None
+    return render_template("cart.html", cart=_cart)
+
 
 
 @app.route("/checkout", methods=["GET", "POST"])
