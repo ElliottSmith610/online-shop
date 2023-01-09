@@ -164,8 +164,14 @@ def cart():
         _cart = session["cart"]
     except KeyError:
         _cart = None
-    return render_template("cart.html", cart=_cart)
-
+        total_price = None
+    else:
+        items_query = db.session.query(Items).all()
+        items = [item.to_dict() for item in items_query if item.name in session["cart"]]
+        session["total_price"] = 0
+        for item in items:
+            session["total_price"] += float(item["price"]) * session["cart"][item["name"]]
+    return render_template("cart.html", cart=_cart, price=session["total_price"])
 
 
 @app.route("/checkout", methods=["GET", "POST"])
