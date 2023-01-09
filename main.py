@@ -6,8 +6,9 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from PIL import Image
 
-from forms import Register, Login, Checkout
+from forms import Register, Login, Checkout, AddItem
 
 app = Flask(__name__)
 Bootstrap(app)
@@ -58,6 +59,8 @@ class Users(UserMixin, db.Model):
 class Items(db.Model):
     __tablename__ = "items"
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(250), nullable=False)
+    price = db.Column(db.Float(9), nullable=False)
 
 
 with app.app_context():
@@ -142,6 +145,22 @@ def users():
     user_list_query = db.session.query(Users).all()
     user_list = [user.is_admin() for user in user_list_query]
     return render_template("users.html", users=user_list)
+
+
+@app.route("/add", methods=["GET", "POST"])
+@admin_only
+def add_item():
+    add_form = AddItem()
+    if add_form.validate_on_submit():
+        new_item = Items()
+        new_item.name = add_form.name.data
+        new_item.price = add_form.price.data
+        image = Image.open(add_form.image.data)
+        image.save(f"./static/items/{add_form.name.data}.jpg")
+        db.session.add(new_item)
+        db.session.commit()
+        return redirect(url_for('add_item'))
+    return render_template("login.html", form=add_form)
 
 
 if __name__ == "__main__":
