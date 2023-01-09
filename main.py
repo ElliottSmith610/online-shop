@@ -59,7 +59,7 @@ class Users(UserMixin, db.Model):
 class Items(db.Model):
     __tablename__ = "items"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(250), nullable=False)
+    name = db.Column(db.String(250), unique=True, nullable=False)
     price = db.Column(db.Float(9), nullable=False)
     description = db.Column(db.String(250), nullable=False)
     img_url = db.Column(db.String(250), nullable=False)
@@ -74,8 +74,13 @@ with app.app_context():
 
 @app.route("/")
 def home():
+    try:
+        print(session["cart"])
+    except KeyError:
+        pass
     items_query = db.session.query(Items).all()
     items = [item.to_dict() for item in items_query]
+
     return render_template("index.html", items=items)
 
 
@@ -135,9 +140,19 @@ def logout():
     return redirect(url_for("home"))
 
 
-@app.route("/to_cart/<int:item_id>")
-def to_cart(item_id):
-    pass
+@app.route("/to_cart/<item_name>", methods=["GET", "POST"])
+def to_cart(item_name):
+    try:
+        if not session["cart"]:
+            pass
+    except KeyError:
+        session["cart"] = {}
+    if item_name in session["cart"]:
+        session["cart"][item_name] += 1
+    else:
+        session["cart"][item_name] = 1
+    session.modified = True
+    return redirect(url_for("home"))
 
 
 @app.route("/cart", methods=["GET", "POST"])
