@@ -33,5 +33,6 @@ class Checkout(FlaskForm):
 class AddItem(FlaskForm):
     name = StringField("Name", validators=[DataRequired()])
     price = FloatField("Price", validators=[DataRequired()])
-    image = FileField("Image")
+    description = StringField("Description", validators=[DataRequired()])
+    image = FileField("Image", validators=[DataRequired()])
     submit = SubmitField("Submit")

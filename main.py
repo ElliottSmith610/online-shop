@@ -61,6 +61,11 @@ class Items(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(250), nullable=False)
     price = db.Column(db.Float(9), nullable=False)
+    description = db.Column(db.String(250), nullable=False)
+    img_url = db.Column(db.String(250), nullable=False)
+
+    def to_dict(self):
+        return {column.name: str(getattr(self, column.name)) for column in self.__table__.columns}
 
 
 with app.app_context():
@@ -69,8 +74,9 @@ with app.app_context():
 
 @app.route("/")
 def home():
-    form = Checkout()
-    return render_template("index.html", form=form)
+    items_query = db.session.query(Items).all()
+    items = [item.to_dict() for item in items_query]
+    return render_template("index.html", items=items)
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -129,6 +135,11 @@ def logout():
     return redirect(url_for("home"))
 
 
+@app.route("/to_cart/<int:item_id>")
+def to_cart(item_id):
+    pass
+
+
 @app.route("/cart", methods=["GET", "POST"])
 def cart():
     pass
@@ -155,8 +166,10 @@ def add_item():
         new_item = Items()
         new_item.name = add_form.name.data
         new_item.price = add_form.price.data
-        image = Image.open(add_form.image.data)
+        new_item.description = add_form.description.data
+        image = Image.open(add_form.image.data).convert('RGB')
         image.save(f"./static/items/{add_form.name.data}.jpg")
+        new_item.img_url = f'items/{add_form.name.data}.jpg'
         db.session.add(new_item)
         db.session.commit()
         return redirect(url_for('add_item'))
