@@ -31,8 +31,9 @@
     {% if cart %}
     <p>Price: £{{ price }}</p>
 
-
-    <a class="btn btn-primary" href="{{ url_for('checkout') }}">Proceed to Checkout</a>
+    <form action="/create-checkout-session" method="POST">
+    <a class="btn btn-primary" href="{{ url_for('create_checkout_session') }}" id="checkout-button">Proceed to Checkout</a>
+    </form>
     {% endif %}
 </div>
 {% endblock %}

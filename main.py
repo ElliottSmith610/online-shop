@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from PIL import Image
+import stripe
 
 from forms import Register, Login, Checkout, AddItem
 
@@ -15,6 +16,10 @@ Bootstrap(app)
 app.config["SECRET_KEY"] = "Banana"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///online-shop.db"
 db = SQLAlchemy(app)
+
+YOUR_DOMAIN = 'http://localhost:5000'
+stripe.api_key = 'sk_test_51MOejpBxBcQVHvbytRuQOfCZqP4SMs3WOeCS9tYL8VzKUZZGJXNJnS4wFejUU6WJODH77U9QZfc9BYr3XSJENTft00mlCd3P8L'
+product_list = stripe.Product.list()
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -37,6 +42,7 @@ def admin_only(func):
                 return func(*args, **kwargs)
             else:
                 return redirect(url_for("home"))
+
     return wrapper
 
 
@@ -48,6 +54,7 @@ class Users(UserMixin, db.Model):
     email = db.Column(db.String(250), nullable=False, unique=True)
     password = db.Column(db.String(250), nullable=False)
     admin = db.Column(db.Boolean, nullable=True)
+
     ## Any relationships ##
     # link to a cart db? #
 
@@ -74,10 +81,9 @@ with app.app_context():
 
 @app.route("/")
 def home():
-    items_query = db.session.query(Items).all()
-    items = [item.to_dict() for item in items_query]
-
-    return render_template("index.html", items=items)
+    # items_query = db.session.query(Items).all()
+    # items = [item.to_dict() for item in items_query]
+    return render_template("index.html", items=product_list)
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -174,9 +180,44 @@ def cart():
     return render_template("cart.html", cart=_cart, price=session["total_price"])
 
 
-@app.route("/checkout", methods=["GET", "POST"])
-def checkout():
-    pass
+@app.route("/create-checkout-session", methods=["GET", "POST"])
+def create_checkout_session():
+    line_items = []
+    for key, value in session["cart"].items():
+        for item in product_list:
+            if item.name == key:
+                _dict = {"price": item.default_price, "quantity": value}
+                line_items.append(_dict)
+    print(line_items)
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            line_items=line_items
+            # [
+            # {
+            #     # Provide the exact Price ID (for example, pr_1234) of the product you want to sell
+            #     'price': 'pr_12345',
+            #     'quantity': 1,
+            # },
+            # ]
+            ,
+            mode='payment',
+            success_url=YOUR_DOMAIN + '/success',
+            cancel_url=YOUR_DOMAIN + '/cancel',
+        )
+    except Exception as e:
+        return str(e)
+
+    return redirect(checkout_session.url, code=303)
+
+
+@app.route("/success")
+def success():
+    return render_template("success.html")
+
+
+@app.route("/cancel")
+def cancel():
+    return render_template("cancel.html")
 
 
 @app.route("/users", methods=["GET", "POST"])
@@ -192,15 +233,23 @@ def users():
 def add_item():
     add_form = AddItem()
     if add_form.validate_on_submit():
-        new_item = Items()
-        new_item.name = add_form.name.data
-        new_item.price = add_form.price.data
-        new_item.description = add_form.description.data
-        image = Image.open(add_form.image.data).convert('RGB')
-        image.save(f"./static/items/{add_form.name.data}.jpg")
-        new_item.img_url = f'items/{add_form.name.data}.jpg'
-        db.session.add(new_item)
-        db.session.commit()
+        # new_item = Items()
+        # new_item.name = add_form.name.data
+        # new_item.price = add_form.price.data
+        # new_item.description = add_form.description.data
+        # image = Image.open(add_form.image.data).convert('RGB')
+        # image.save(f"./static/items/{add_form.name.data}.jpg")
+        # new_item.img_url = f'items/{add_form.name.data}.jpg'
+        # db.session.add(new_item)
+        # db.session.commit()
+
+        ## Stripe
+        stripe.Product.create(name=add_form.name.data, description=add_form.description.data,
+                              metadata={"price": add_form.price.data},
+                              default_price_data={"currency": "GBP",
+                                                  "unit_amount_decimal": round(add_form.price.data * 100), })
+        global product_list
+        product_list = stripe.Product.list()
         return redirect(url_for('add_item'))
     return render_template("login.html", form=add_form)
 
